@@ -1,0 +1,29 @@
+{
+    "name": "guoliang/upc",
+    "description": "upc",
+    "type": "library",
+    "keywords": [
+        "RBAC"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "guoliang",
+            "email": "761297884@qq.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "psr/log": "^1.1",
+        "tp51/think-orm": "dev-master",
+        "tp51/think-validate": "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "upc\\": "src"
+        },
+        "files": [
+            "src/config/database.php"
+        ]
+    }
+}
