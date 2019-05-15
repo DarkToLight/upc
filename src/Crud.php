@@ -64,7 +64,7 @@ abstract class  Crud
             return $backData;
         }
     }
-    public function read($id)
+    public function read(int $id)
     {
         try {
             $data = $this->model->where("id", 'eq', $id)->find();
@@ -73,11 +73,11 @@ abstract class  Crud
             return ['code' => '-1', 'msg' => "获取数据失败"];
         }
     }
-    public function delete($id)
+    public function delete(int $id)
     {
         try{
             # 使用逗号分隔可实现批量删除
-            $this->model->destroy((int)$id);
+            $this->model->destroy($id);
             Db::commit();
             $backData = ['code' => 1, 'msg' => '删除成功'];
             return $backData;

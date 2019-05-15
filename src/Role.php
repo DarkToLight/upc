@@ -1,5 +1,6 @@
 <?php
 namespace upc;
+
 use upc\model\RoleExcludeRole;
 use upc\model\RoleHavePower;
 use upc\model\UserAssignRole;
@@ -15,6 +16,9 @@ class Role extends Crud
     }
     public function create($input)
     {
+        if (!isset($input['name'])) {
+            return ['code' => -1, 'msg' => '角色名称(name)不能为空'];
+        }
         if ($this->model->where('name', 'eq', $input['name'])->find()) {
             return ['code' => -1, 'msg' => '角色名称已经存在'];
         }
@@ -85,13 +89,36 @@ class Role extends Crud
      */
     public function exclude(Array $roleIds, $roleId)
     {
+        $mRoleExcludeRole = new RoleExcludeRole();
         try{
             $data = array();
-            $mRoleExcludeRole = new RoleExcludeRole();
             $role = $this->model->where('id', 'eq', $roleId)->find();
             if (empty($role)) {
                 return ['code' => -1, 'msg' => "角色不存在"];
             }
+            $allExclude = $mRoleExcludeRole
+                ->where('role_id2', 'eq', $roleId)
+                ->whereOr('role_id', 'eq', $roleId)
+                ->select()->toArray();
+            $finalExclude = [];
+            foreach ($allExclude as $item) {
+                if ($item['role_id'] == $roleId) {
+                    array_push($finalExclude, $item['role_id2']);
+                } else {
+                    array_push($finalExclude, $item['role_id']);
+                }
+            }
+            $delExclude = array_diff($finalExclude, $roleIds);
+            $mRoleExcludeRole->startTrans();
+
+            $mRoleExcludeRole
+                ->where('role_id', 'eq', $roleId)
+                ->whereIn('role_id2', $delExclude)
+                ->delete();
+            $mRoleExcludeRole
+                ->where('role_id2', 'eq', $roleId)
+                ->whereIn('role_id', $delExclude)
+                ->delete();
             foreach ($roleIds as $item) {
                 if ($roleId == $item) {
                     return ['code' => -1, 'msg' => "不能和自己互斥"];
@@ -100,15 +127,32 @@ class Role extends Crud
                 if(empty($role)) {
                     return ['code' => -1, 'msg' => "互斥的{$item}角色不存在"];
                 }
-                $excludeRole = $mRoleExcludeRole->where(['role_id' => $roleId, 'role_id2' => $item])->find();
-                if (empty($excludeRole)) {
+                //$sql = "select * from wx_role_exclude_role where role_id={$roleId} and role_id2={$item} or role_id2={$roleId} and role_id={$roleId}";
+                $excludeRole = $mRoleExcludeRole
+                    ->where(['role_id' => $roleId, 'role_id2' => $item])
+                    ->find();
+                $excludeRole2 = $mRoleExcludeRole
+                    ->where(['role_id2' => $roleId, 'role_id' => $item])
+                    ->find();
+                if (empty($excludeRole) && empty($excludeRole2)) {
                     $data[] = ['role_id' => $roleId, 'role_id2' => $item];
                 }
             }
             $mRoleExcludeRole->insertAll($data);
+            $mRoleExcludeRole->commit();
             return ['code' => 1, 'msg' => '角色互斥组织成功'];
         } catch (\Exception $e) {
+            $mRoleExcludeRole->rollback();
             return ['code' => -1, 'msg' => $e->getMessage()];
+        }
+    }
+    public function getExcludeRole(int $roleId)
+    {
+        try{
+            $mRoleExcludeRole = new RoleExcludeRole();
+
+        }catch (\Exception $exception) {
+
         }
     }
     /**

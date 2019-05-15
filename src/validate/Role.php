@@ -10,6 +10,7 @@ class Role extends Validate
         'name' => "require",
         'direction' => 'require|in:1,-1',
         'description' => 'require',
+        'role_id' => 'require'
     ];
     protected $message = [
 
@@ -19,11 +20,13 @@ class Role extends Validate
         'name.require' => '{"code": -1,"msg":"名称不能为空"}',
         'direction.require' => '{"code": -1,"msg":"授权方向不能为空"}',
         'direction.in' => '{"code": -1,"msg":"授权方向设置错误"}',
+        'role_id.require' => '{"code": -1,"msg":"role_id参数不能为空"}',
     ];
     public $scene = [
         'create' => ['name', 'direction'],
         'delete' => ['id'],
         'update' => ['id','name', 'direction'],
-        'read' => ['id']
+        'read' => ['id'],
+        'exclude' => ['role_id']
     ];
 }

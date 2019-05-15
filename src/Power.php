@@ -2,7 +2,7 @@
 namespace upc;
 
 use upc\model\RoleHavePower;
-use upc\model\Role;
+use upc\model\Role as mRole;
 use upc\model\Power as mPower;
 
 class Power extends Crud
@@ -33,7 +33,7 @@ class Power extends Crud
     public function assign(Array $powerId, $roleId)
     {
         try{
-            $mRole = new Role();
+            $mRole = new mRole();
             $role = $mRole->where('id', 'eq', $roleId)->find();
             $data = array();
             if (!empty($role)) {

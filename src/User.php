@@ -21,9 +21,9 @@ class User
         try{
             $mUserAssignRole = new UserAssignRole();
             $roleList = $mUserAssignRole->where(['user_id' => $this->userId])->select()->toArray();
-            return ['code'=>-1, 'msg' => '获取成功', 'data' => $roleList];
+            return ['code'=> 1, 'msg' => '获取成功', 'data' => $roleList];
         }catch (\Exception $e) {
-            return ['code'=>-1, 'msg' => $e->getMessage()];
+            return ['code'=> -1, 'msg' => $e->getMessage()];
         }
     }
 
