@@ -18,7 +18,7 @@ class Power extends Crud
         if (!isset($input['power'])) {
             return ['code' => -1, 'msg' => '权限名称不能为空'];
         }
-        if (self::$model->where('power', 'eq', $input['power'])->find()) {
+        if ($this->model->where('power', 'eq', $input['power'])->find()) {
             return ['code' => -1, 'msg' => '权限节点已经存在'];
         }
         $input['create_time'] = date("Y-m-d H:i:s");

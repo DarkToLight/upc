@@ -15,7 +15,7 @@ class Role extends Crud
     }
     public function create($input)
     {
-        if (self::$model->where('name', 'eq', $input['name'])->find()) {
+        if ($this->model->where('name', 'eq', $input['name'])->find()) {
             return ['code' => -1, 'msg' => '角色名称已经存在'];
         }
         return parent::create($input);
@@ -33,7 +33,7 @@ class Role extends Crud
             $data = array();
             $mRoleExcludeRole = new RoleExcludeRole();
             foreach ($roleId as $item) {
-                $role = self::$model->where('id', 'eq', $item)->find();
+                $role = $this->model->where('id', 'eq', $item)->find();
                 if (empty($role)) {
                     return ['code' => -1, 'msg' => '角色不存在'];
                 }
@@ -88,7 +88,7 @@ class Role extends Crud
         try{
             $data = array();
             $mRoleExcludeRole = new RoleExcludeRole();
-            $role = self::$model->where('id', 'eq', $roleId)->find();
+            $role = $this->model->where('id', 'eq', $roleId)->find();
             if (empty($role)) {
                 return ['code' => -1, 'msg' => "角色不存在"];
             }
@@ -96,7 +96,7 @@ class Role extends Crud
                 if ($roleId == $item) {
                     return ['code' => -1, 'msg' => "不能和自己互斥"];
                 }
-                $role = self::$model->where('id', 'eq', $item)->find();
+                $role = $this->model->where('id', 'eq', $item)->find();
                 if(empty($role)) {
                     return ['code' => -1, 'msg' => "互斥的{$item}角色不存在"];
                 }
@@ -111,7 +111,6 @@ class Role extends Crud
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
-
     /**
      * 获取角色权限列表
      * @param $roleId

@@ -36,12 +36,12 @@ $power = new Power();
 //var_dump($result);
 # =========================================================================
 //
-$user = new User(9);
+$user = new User(14);
 $result = $user->getAssignRole();
 var_dump($result);
 
 $result = $user->getPower();
 var_dump($result);
-$result = $user->isHavePower("user/delete");
+$result = $user->isHavePower("admin/user/update");
 var_dump($result);
 //# =======================================================================
