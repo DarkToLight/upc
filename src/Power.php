@@ -4,6 +4,7 @@ namespace upc;
 use upc\model\RoleHavePower;
 use upc\model\Role as mRole;
 use upc\model\Power as mPower;
+use upc\model\UserAssignRole;
 
 class Power extends Crud
 {
@@ -77,5 +78,13 @@ class Power extends Crud
             $this->userHavePower->rollback();
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
+    }
+    public function delete($id)
+    {
+        $m = new model\Role();
+        if (!empty($m->where(['power_id'=> (int)$id])->find())) {
+            return ['code' => -1, 'msg' => "不能删除还在被角色使用的权限"];
+        }
+        return parent::delete($id);
     }
 }

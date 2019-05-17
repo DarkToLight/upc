@@ -5,7 +5,7 @@ use upc\model\RoleExcludeRole;
 use upc\model\RoleHavePower;
 use upc\model\UserAssignRole;
 
-class Role extends Crud
+final class Role extends Crud
 {
     protected $userAssignRole;
     protected $roleExcludeRole;
@@ -24,7 +24,6 @@ class Role extends Crud
         }
         return parent::create($input);
     }
-
     /**
      * 将角色分配给用户,用户是否存在在此不做判断。
      * @param array $roleId
@@ -36,14 +35,18 @@ class Role extends Crud
         try{
             $data = array();
             $mRoleExcludeRole = new RoleExcludeRole();
+            $mUserAssignRole = new UserAssignRole();
+            $excludeAssigned = $mUserAssignRole->field('role_id')->where('user_id', 'eq', $userId)->select()->toArray();
+            $excludeAssigned = array_column($excludeAssigned, 'role_id');
             foreach ($roleId as $item) {
                 $role = $this->model->where('id', 'eq', $item)->find();
                 if (empty($role)) {
                     return ['code' => -1, 'msg' => '角色不存在'];
                 }
                 $excludeRole = $mRoleExcludeRole->select()->toArray();
+
                 foreach ($excludeRole as $value) {
-                    $result = array_intersect($value,$roleId);
+                    $result = array_intersect($value,array_merge($excludeAssigned,$roleId));
                     if(count($result) > 1){
                         return ['code' => -1, 'msg' => '存在互斥的角色'.json_encode($value)];
                     }
@@ -80,7 +83,6 @@ class Role extends Crud
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
-
     /**
      * 获取一个角色最终互斥的所有角色
      * @param $roleId 角色id
@@ -156,7 +158,7 @@ class Role extends Crud
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
-    public function getExcludeRole(int $roleId)
+    public function getExcludeRole($roleId)
     {
         try{
             $mRole = new model\Role();
@@ -179,5 +181,13 @@ class Role extends Crud
         }catch (\Exception $e) {
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
+    }
+    public function delete($id)
+    {
+        $m = new UserAssignRole();
+        if (!empty($m->where(['role_id'=> $id])->find())) {
+            return ['code' => -1, 'msg' => "不能删除用户还在使用的角色"];
+        }
+        return parent::delete(intval($id));
     }
 }

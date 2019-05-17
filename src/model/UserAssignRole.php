@@ -7,7 +7,7 @@ class UserAssignRole extends Base
     {
         if (!empty($data)) {
             $mRole = new Role();
-            $role = $mRole->where('id', 'eq', $data['role_id'])->field('name,direction,status')->findOrEmpty();
+            $role = $mRole->where('id', 'eq', $data['role_id'])->field('name,direction,status')->find();
             $data['role_name'] = $role['name'];
             $data['status'] = $role['status'];
             $data['role_direction'] = $role['direction'];
