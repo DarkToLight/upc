@@ -82,6 +82,28 @@ class Role extends Crud
     }
 
     /**
+     * 获取一个角色最终互斥的所有角色
+     * @param $roleId 角色id
+     * @return array
+     */
+    protected  function getFinalExcludeRole($roleId)
+    {
+        $mRoleExcludeRole = new RoleExcludeRole();
+        $allExclude = $mRoleExcludeRole
+            ->where('role_id2', 'eq', $roleId)
+            ->whereOr('role_id', 'eq', $roleId)
+            ->select()->toArray();
+        $finalExclude = [];
+        foreach ($allExclude as $item) {
+            if ($item['role_id'] == $roleId) {
+                array_push($finalExclude, $item['role_id2']);
+            } else {
+                array_push($finalExclude, $item['role_id']);
+            }
+        }
+        return $finalExclude;
+    }
+    /**
      * 配置互斥角色
      * @param array $roleIds
      * @param $roleId
@@ -96,19 +118,7 @@ class Role extends Crud
             if (empty($role)) {
                 return ['code' => -1, 'msg' => "角色不存在"];
             }
-            $allExclude = $mRoleExcludeRole
-                ->where('role_id2', 'eq', $roleId)
-                ->whereOr('role_id', 'eq', $roleId)
-                ->select()->toArray();
-            $finalExclude = [];
-            foreach ($allExclude as $item) {
-                if ($item['role_id'] == $roleId) {
-                    array_push($finalExclude, $item['role_id2']);
-                } else {
-                    array_push($finalExclude, $item['role_id']);
-                }
-            }
-            $delExclude = array_diff($finalExclude, $roleIds);
+            $delExclude = array_diff($this->getFinalExcludeRole($roleId), $roleIds);
             $mRoleExcludeRole->startTrans();
 
             $mRoleExcludeRole
@@ -149,10 +159,11 @@ class Role extends Crud
     public function getExcludeRole(int $roleId)
     {
         try{
-            $mRoleExcludeRole = new RoleExcludeRole();
-
+            $mRole = new model\Role();
+            $role = $mRole->whereIn('id', $this->getFinalExcludeRole($roleId))->select()->toArray();
+            return ['code' => 1, 'data' => $role];
         }catch (\Exception $exception) {
-
+            return ['code' => -1, 'msg' => $exception->getMessage()];
         }
     }
     /**

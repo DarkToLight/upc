@@ -39,7 +39,7 @@ class User
 
             $roleList = $this->getAssignRole();
             foreach ($roleList['data'] as $key => $value) {
-                if ($value['status'] != 1) {
+                if ($value['status'] != 1) { // 如果角色被禁用则不参与权限终集计算
                     continue;
                 }
                 $powers = $mRoleHavePower->where('role_id', 'eq', $value['role_id'])->select()->toArray();
