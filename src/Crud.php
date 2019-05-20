@@ -40,12 +40,14 @@ abstract class  Crud
                 return ['code' => 0000, 'msg'=>"非法参数id"];
             }
             $this->model->save($input);
-            $this->model->commit();
+            Db::commit();
             $backData = ['code' => 1, 'msg' => '新增成功'];
             return $backData;
         } catch (ValidateException $e) {
+            Db::rollback();
             return json_decode($e->getMessage(), true);
         }catch (\Exception $e) {
+            Db::rollback();
             $backData = ['code' => '-1', 'msg' => $e->getMessage()];
             return $backData;
         }
@@ -64,7 +66,7 @@ abstract class  Crud
             return $backData;
         }
     }
-    public function read(int $id)
+    public function read($id)
     {
         try {
             $data = $this->model->where("id", 'eq', $id)->find();
@@ -73,7 +75,7 @@ abstract class  Crud
             return ['code' => '-1', 'msg' => "获取数据失败"];
         }
     }
-    public function delete(int $id)
+    public function delete($id)
     {
         try{
             # 使用逗号分隔可实现批量删除
@@ -82,6 +84,7 @@ abstract class  Crud
             $backData = ['code' => 1, 'msg' => '删除成功'];
             return $backData;
         } catch(\Exception $e) {
+            Db::rollback();
             $backData = ['code' => '-1', 'msg' => "删除失败"];
             return $backData;
         }

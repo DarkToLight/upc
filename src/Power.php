@@ -1,10 +1,10 @@
 <?php
 namespace upc;
 
+use tp51\Db;
 use upc\model\RoleHavePower;
 use upc\model\Role as mRole;
 use upc\model\Power as mPower;
-use upc\model\UserAssignRole;
 
 class Power extends Crud
 {
@@ -39,6 +39,11 @@ class Power extends Crud
             $data = array();
             if (!empty($role)) {
                 $mPower = new mPower();
+                $allRolePower = $this->userHavePower->field("power_id")->where(['role_id'=>$roleId])->select()->toArray();
+                $allRolePower = array_column($allRolePower, 'power_id');
+                $delRolePower = array_diff($allRolePower, $powerId);
+                Db::startTrans();
+                $this->userHavePower->whereIn('power_id', $delRolePower)->where(['role_id' => $roleId])->delete();
                 foreach ($powerId as $item) {
                     $power = $mPower->where('id', 'eq', $item)->find();
                     $exits = $this->userHavePower->where(['power_id' => $item, 'role_id' => $roleId])->find();
@@ -46,6 +51,7 @@ class Power extends Crud
                         $data[] = ['power_id' => $item, 'role_id' => $roleId];
                     }
                     if (empty($power)) {
+                        Db::rollback();
                         return ['code' => -1, 'msg' => '权限不存在'];
                     }
                 }
@@ -53,13 +59,15 @@ class Power extends Crud
                 return ['code' => -1, 'msg' => '角色不存在'];
             }
             $this->userHavePower->insertAll($data);
+            Db::commit();
             return ['code' => 1, 'msg' => '权限分配成功'];
         } catch (\Exception $e) {
+            Db::rollback();
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
     /**
-     * 回收权限
+     * 回收权限, 废弃
      * @param array $powerId 权限id数组
      * @param $roleId
      * @return array
@@ -81,10 +89,10 @@ class Power extends Crud
     }
     public function delete($id)
     {
-        $m = new model\Role();
-        if (!empty($m->where(['power_id'=> (int)$id])->find())) {
-            return ['code' => -1, 'msg' => "不能删除还在被角色使用的权限"];
-        }
+        // 同时删除此权限与角色的对应关系。
+        $mRoleHavePower = new RoleHavePower();
+        Db::startTrans();
+        $mRoleHavePower->where(['power_id' => $id])->delete();
         return parent::delete($id);
     }
 }

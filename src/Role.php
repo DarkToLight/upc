@@ -1,6 +1,7 @@
 <?php
 namespace upc;
 
+use tp51\Db;
 use upc\model\RoleExcludeRole;
 use upc\model\RoleHavePower;
 use upc\model\UserAssignRole;
@@ -36,6 +37,7 @@ final class Role extends Crud
             $data = array();
             $mRoleExcludeRole = new RoleExcludeRole();
             $mUserAssignRole = new UserAssignRole();
+            $mRole = new model\Role();
             $excludeAssigned = $mUserAssignRole->field('role_id')->where('user_id', 'eq', $userId)->select()->toArray();
             $excludeAssigned = array_column($excludeAssigned, 'role_id');
             foreach ($roleId as $item) {
@@ -48,7 +50,15 @@ final class Role extends Crud
                 foreach ($excludeRole as $value) {
                     $result = array_intersect($value,array_merge($excludeAssigned,$roleId));
                     if(count($result) > 1){
-                        return ['code' => -1, 'msg' => '存在互斥的角色'.json_encode($value)];
+                        $excludeRoleInfo = $mRole
+                            ->field('id,name')
+                            ->where('id', 'eq', $value['role_id'])
+                            ->whereOr('id', 'eq', $value['role_id2'])
+                            ->select()
+                            ->toArray();
+                        $role0 = $excludeRoleInfo[0]['name'];
+                        $role1 = $excludeRoleInfo[1]['name'];
+                        return ['code' => -1, 'msg' => "【{$role0}】与【{$role1}】互斥"];
                     }
                 }
                 $exits = $this->userAssignRole->where(['role_id' => $item, 'user_id' => $userId])->find();
@@ -83,6 +93,10 @@ final class Role extends Crud
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
+    public function revokeAll($userId)
+    {
+        $this->userAssignRole->where(['user_id' => $userId])->delete();
+    }
     /**
      * 获取一个角色最终互斥的所有角色
      * @param $roleId 角色id
@@ -113,15 +127,19 @@ final class Role extends Crud
      */
     public function exclude(Array $roleIds, $roleId)
     {
-        $mRoleExcludeRole = new RoleExcludeRole();
         try{
+            $mRoleExcludeRole = new RoleExcludeRole();
+            $mUserAssignRole = new UserAssignRole();
+            if (count($mUserAssignRole->whereIn('role_id', $roleIds)->select()) > 1) {
+                return ['code' => -1, 'msg' => "要互斥的角色被用户同时扮演。"];
+            }
             $data = array();
             $role = $this->model->where('id', 'eq', $roleId)->find();
             if (empty($role)) {
                 return ['code' => -1, 'msg' => "角色不存在"];
             }
             $delExclude = array_diff($this->getFinalExcludeRole($roleId), $roleIds);
-            $mRoleExcludeRole->startTrans();
+            Db::startTrans();
 
             $mRoleExcludeRole
                 ->where('role_id', 'eq', $roleId)
@@ -133,10 +151,12 @@ final class Role extends Crud
                 ->delete();
             foreach ($roleIds as $item) {
                 if ($roleId == $item) {
+                    Db::rollback();
                     return ['code' => -1, 'msg' => "不能和自己互斥"];
                 }
                 $role = $this->model->where('id', 'eq', $item)->find();
                 if(empty($role)) {
+                    Db::rollback();
                     return ['code' => -1, 'msg' => "互斥的{$item}角色不存在"];
                 }
                 //$sql = "select * from wx_role_exclude_role where role_id={$roleId} and role_id2={$item} or role_id2={$roleId} and role_id={$roleId}";
@@ -151,10 +171,10 @@ final class Role extends Crud
                 }
             }
             $mRoleExcludeRole->insertAll($data);
-            $mRoleExcludeRole->commit();
+            Db::commit();
             return ['code' => 1, 'msg' => '角色互斥组织成功'];
         } catch (\Exception $e) {
-            $mRoleExcludeRole->rollback();
+            Db::rollback();
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
@@ -184,10 +204,15 @@ final class Role extends Crud
     }
     public function delete($id)
     {
-        $m = new UserAssignRole();
-        if (!empty($m->where(['role_id'=> $id])->find())) {
-            return ['code' => -1, 'msg' => "不能删除用户还在使用的角色"];
-        }
+        // todo,提示将删除所有关联数据 1.互斥关系删除。2，回收所有分配到此角色。3.删除所有赋予角色的权限
+        $mUserAssignRole = new UserAssignRole();
+        $mRoleHavePower = new RoleHavePower();
+        $mRoleExcludeRole = new RoleExcludeRole();
+        Db::startTrans();
+        $where = ['role_id' => $id];
+        $mUserAssignRole->where($where )->delete();
+        $mRoleHavePower->where($where)->delete();
+        $mRoleExcludeRole->where($where)->whereOr(['role_id2' => $id])->delete();
         return parent::delete(intval($id));
     }
 }
