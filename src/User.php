@@ -1,16 +1,24 @@
 <?php
 namespace upc;
 
+use tp51\Db;
 use upc\model\RoleHavePower;
 use upc\model\UserAssignRole;
 
-class User
+class User extends Crud
 {
     protected $power;
     protected $userId;
     public function __construct($userId)
     {
         $this->userId = $userId;
+    }
+    public function delete($id)
+    {
+        $mUserAssignRole = new UserAssignRole();
+        Db::startTrans();
+        $mUserAssignRole->where(['user_id' => $id])->delete(); // 解除用户与角色的关联
+        return parent::delete();
     }
     /**
      * 获取用户所分配的角色
@@ -21,7 +29,7 @@ class User
         try{
             $mUserAssignRole = new UserAssignRole();
             $roleList = $mUserAssignRole->where(['user_id' => $this->userId])->select()->toArray();
-            return ['code'=> 1, 'msg' => '获取成功', 'data' => $roleList];
+            return ['code'=> 1,  'data' => $roleList];
         }catch (\Exception $e) {
             return ['code'=> -1, 'msg' => $e->getMessage()];
         }

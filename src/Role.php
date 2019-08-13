@@ -5,6 +5,7 @@ use tp51\Db;
 use upc\model\RoleExcludeRole;
 use upc\model\RoleHavePower;
 use upc\model\UserAssignRole;
+use upc\model\User;
 
 final class Role extends Crud
 {
@@ -26,7 +27,6 @@ final class Role extends Crud
         return parent::create($input);
     }
     /**
-     * 将角色分配给用户,用户是否存在在此不做判断。
      * @param array $roleId
      * @param $userId
      * @return array
@@ -35,6 +35,11 @@ final class Role extends Crud
     {
         try{
             $data = array();
+            $mUser = new User();
+            $user = $mUser->field('account')->where('id', 'eq', $userId);
+            if (empty($user)) {
+                return ['code' => -1, 'msg' => '用户不存在'];
+            }
             $mRoleExcludeRole = new RoleExcludeRole();
             $mUserAssignRole = new UserAssignRole();
             $mRole = new model\Role();
@@ -182,7 +187,12 @@ final class Role extends Crud
     {
         try{
             $mRole = new model\Role();
-            $role = $mRole->whereIn('id', $this->getFinalExcludeRole($roleId))->select()->toArray();
+            $role = $mRole->whereIn('id', $this->getFinalExcludeRole($roleId))->select();
+            if (!empty($role)) {
+                $role = $role->toArray();
+            } else {
+                $role = [];
+            }
             return ['code' => 1, 'data' => $role];
         }catch (\Exception $exception) {
             return ['code' => -1, 'msg' => $exception->getMessage()];
@@ -204,10 +214,9 @@ final class Role extends Crud
     }
     public function delete($id)
     {
-        // todo,提示将删除所有关联数据 1.互斥关系删除。2，回收所有分配到此角色。3.删除所有赋予角色的权限
-        $mUserAssignRole = new UserAssignRole();
-        $mRoleHavePower = new RoleHavePower();
-        $mRoleExcludeRole = new RoleExcludeRole();
+        $mUserAssignRole = new UserAssignRole(); // 解除用户分配到的角色
+        $mRoleHavePower = new RoleHavePower(); // 删除角色所有的权限
+        $mRoleExcludeRole = new RoleExcludeRole(); // 删除相关的互斥关系
         Db::startTrans();
         $where = ['role_id' => $id];
         $mUserAssignRole->where($where )->delete();
