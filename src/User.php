@@ -16,6 +16,9 @@ class User extends Crud
     }
     public function delete($id)
     {
+        if ($id == 1) {
+            return ['code' => -1, 'msg' => '不允许删除超级管理员'];
+        }
         $mUserAssignRole = new UserAssignRole();
         Db::startTrans();
         $mUserAssignRole->where(['user_id' => $id])->delete(); // 解除用户与角色的关联
