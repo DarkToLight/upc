@@ -36,8 +36,7 @@ abstract class  Crud
         try {
             $this->validate($input, __FUNCTION__);
             if(isset($input['id'])) {
-                # 解决validate unique 新增成功后，传入新增的id，还能新增。
-                return ['code' => 0000, 'msg'=>"非法参数id"];
+              unset($input['id']);
             }
             $this->model->save($input);
             Db::commit();
