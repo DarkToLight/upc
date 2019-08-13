@@ -12,13 +12,14 @@ class User extends Crud
     public function __construct($userId)
     {
         $this->userId = $userId;
+        parent::__construct();
     }
     public function delete($id)
     {
         $mUserAssignRole = new UserAssignRole();
         Db::startTrans();
         $mUserAssignRole->where(['user_id' => $id])->delete(); // 解除用户与角色的关联
-        return parent::delete();
+        return parent::delete($id);
     }
     /**
      * 获取用户所分配的角色

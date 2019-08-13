@@ -11,7 +11,7 @@ abstract class  Crud
     private $className;
     public function __construct()
     {
-        $this->className = basename(get_class($this));
+        $this->className = str_replace("upc\\", "",get_class($this));
         $modelName = "upc\\model\\{$this->className}";
         $reflection = new \ReflectionClass($modelName);
         $this->model = $reflection->newInstance();
