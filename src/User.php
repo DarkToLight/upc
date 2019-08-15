@@ -8,12 +8,6 @@ use upc\model\UserAssignRole;
 class User extends Crud
 {
     protected $power;
-    protected $userId;
-    public function __construct($userId)
-    {
-        $this->userId = $userId;
-        parent::__construct();
-    }
     public function delete($id)
     {
         if ($id == 1) {
@@ -24,15 +18,17 @@ class User extends Crud
         $mUserAssignRole->where(['user_id' => $id])->delete(); // 解除用户与角色的关联
         return parent::delete($id);
     }
+
     /**
      * 获取用户所分配的角色
+     * @param $userId
      * @return array 返回分配角色的数组
      */
-    public function getAssignRole()
+    public function getAssignRole($userId)
     {
         try{
             $mUserAssignRole = new UserAssignRole();
-            $roleList = $mUserAssignRole->where(['user_id' => $this->userId])->select()->toArray();
+            $roleList = $mUserAssignRole->where(['user_id' => $userId])->select()->toArray();
             return ['code'=> 1,  'data' => $roleList];
         }catch (\Exception $e) {
             return ['code'=> -1, 'msg' => $e->getMessage()];
@@ -41,15 +37,16 @@ class User extends Crud
 
     /**
      * 获取用户所有权限
+     * @param $userId
      * @return array 权限数组  正向授权数组和反向授权数组
      */
-    public function getPower()
+    public function getPower($userId)
     {
         try{
             $mRoleHavePower = new RoleHavePower();
             $powerList = ['allow' => array(), 'deny' => array()];
 
-            $roleList = $this->getAssignRole();
+            $roleList = $this->getAssignRole($userId);
             foreach ($roleList['data'] as $key => $value) {
                 if ($value['status'] != 1) { // 如果角色被禁用则不参与权限终集计算
                     continue;
@@ -75,13 +72,14 @@ class User extends Crud
      *  1. 两个以上反向授权的角色。反向权限叠加。
      *  2. 两个以上的正向授权角色。正向权限叠加。
      *  3. 既有正向角色，又又反向角色，以反向角色为主，若正向包含反向的授权，则从反向授权中移除该权限
+     * @param $userId
      * @param $power 权限名称
      * @return array|bool
      */
-    public function isHavePower($power)
+    public function isHavePower($userId, $power)
     {
         try{
-            $powerList = $this->getPower();
+            $powerList = $this->getPower($userId);
             $allow = array_column($powerList['allow'], 'power');
             $deny = array_column($powerList['deny'], 'power');
             if (!empty($deny) && !empty($allow)) {

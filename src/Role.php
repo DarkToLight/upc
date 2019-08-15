@@ -9,11 +9,14 @@ use upc\model\User;
 
 final class Role extends Crud
 {
-    protected $userAssignRole;
-    protected $roleExcludeRole;
+    protected $mUserAssignRole;
+    protected $mRoleExcludeRole;
+    protected $mRoleHavePower;
     public function __construct()
     {
-        $this->userAssignRole = new UserAssignRole();
+        $this->mUserAssignRole = new UserAssignRole();
+        $this->mRoleExcludeRole = new RoleExcludeRole();
+        $this->mRoleHavePower = new RoleHavePower();
         parent::__construct();
     }
     public function create($input)
@@ -40,17 +43,15 @@ final class Role extends Crud
             if (empty($user)) {
                 return ['code' => -1, 'msg' => '用户不存在'];
             }
-            $mRoleExcludeRole = new RoleExcludeRole();
-            $mUserAssignRole = new UserAssignRole();
             $mRole = new model\Role();
-            $excludeAssigned = $mUserAssignRole->field('role_id')->where('user_id', 'eq', $userId)->select()->toArray();
+            $excludeAssigned = $this->mUserAssignRole->field('role_id')->where('user_id', 'eq', $userId)->select()->toArray();
             $excludeAssigned = array_column($excludeAssigned, 'role_id');
             foreach ($roleId as $item) {
                 $role = $this->model->where('id', 'eq', $item)->find();
                 if (empty($role)) {
                     return ['code' => -1, 'msg' => '角色不存在'];
                 }
-                $excludeRole = $mRoleExcludeRole->select()->toArray();
+                $excludeRole = $this->mRoleExcludeRole->select()->toArray();
 
                 foreach ($excludeRole as $value) {
                     $result = array_intersect($value,array_merge($excludeAssigned,$roleId));
@@ -66,12 +67,12 @@ final class Role extends Crud
                         return ['code' => -1, 'msg' => "【{$role0}】与【{$role1}】互斥"];
                     }
                 }
-                $exits = $this->userAssignRole->where(['role_id' => $item, 'user_id' => $userId])->find();
+                $exits = $this->mUserAssignRole->where(['role_id' => $item, 'user_id' => $userId])->find();
                 if (empty($exits)) {
                     $data[] = ['role_id' => $item, 'user_id' => $userId];
                 }
             }
-            $this->userAssignRole->insertAll($data);
+            $this->mUserAssignRole->insertAll($data);
             return ['code' => 1, 'msg' => '分配角色成功'];
         } catch (\Exception $e) {
             return ['code' => -1, 'msg' => $e->getMessage()];
@@ -87,20 +88,20 @@ final class Role extends Crud
     public function revoke(Array $roleId, $userId)
     {
         try{
-            $this->userAssignRole->startTrans();
+            $this->mUserAssignRole->startTrans();
             foreach ($roleId as $item) {
-                $this->userAssignRole->where(['role_id' => $item, 'user_id' => $userId])->delete();
+                $this->mUserAssignRole->where(['role_id' => $item, 'user_id' => $userId])->delete();
             }
-            $this->userAssignRole->commit();
+            $this->mUserAssignRole->commit();
             return ['code' => 1, 'msg' => '回收成功'];
         }catch (\Exception $e) {
-            $this->userAssignRole->rollback();
+            $this->mUserAssignRole->rollback();
             return ['code' => -1, 'msg' => $e->getMessage()];
         }
     }
     public function revokeAll($userId)
     {
-        $this->userAssignRole->where(['user_id' => $userId])->delete();
+        $this->mUserAssignRole->where(['user_id' => $userId])->delete();
     }
     /**
      * 获取一个角色最终互斥的所有角色
@@ -109,8 +110,7 @@ final class Role extends Crud
      */
     protected  function getFinalExcludeRole($roleId)
     {
-        $mRoleExcludeRole = new RoleExcludeRole();
-        $allExclude = $mRoleExcludeRole
+        $allExclude = $this->mRoleExcludeRole
             ->where('role_id2', 'eq', $roleId)
             ->whereOr('role_id', 'eq', $roleId)
             ->select()->toArray();
@@ -133,9 +133,7 @@ final class Role extends Crud
     public function exclude(Array $roleIds, $roleId)
     {
         try{
-            $mRoleExcludeRole = new RoleExcludeRole();
-            $mUserAssignRole = new UserAssignRole();
-            if (count($mUserAssignRole->whereIn('role_id', $roleIds)->select()) > 1) {
+            if (count($this->mUserAssignRole->whereIn('role_id', $roleIds)->select()) > 1) {
                 return ['code' => -1, 'msg' => "要互斥的角色被用户同时扮演。"];
             }
             $data = array();
@@ -146,11 +144,11 @@ final class Role extends Crud
             $delExclude = array_diff($this->getFinalExcludeRole($roleId), $roleIds);
             Db::startTrans();
 
-            $mRoleExcludeRole
+            $this->mRoleExcludeRole
                 ->where('role_id', 'eq', $roleId)
                 ->whereIn('role_id2', $delExclude)
                 ->delete();
-            $mRoleExcludeRole
+            $this->mRoleExcludeRole
                 ->where('role_id2', 'eq', $roleId)
                 ->whereIn('role_id', $delExclude)
                 ->delete();
@@ -165,17 +163,17 @@ final class Role extends Crud
                     return ['code' => -1, 'msg' => "互斥的{$item}角色不存在"];
                 }
                 //$sql = "select * from wx_role_exclude_role where role_id={$roleId} and role_id2={$item} or role_id2={$roleId} and role_id={$roleId}";
-                $excludeRole = $mRoleExcludeRole
+                $excludeRole = $this->mRoleExcludeRole
                     ->where(['role_id' => $roleId, 'role_id2' => $item])
                     ->find();
-                $excludeRole2 = $mRoleExcludeRole
+                $excludeRole2 = $this->mRoleExcludeRole
                     ->where(['role_id2' => $roleId, 'role_id' => $item])
                     ->find();
                 if (empty($excludeRole) && empty($excludeRole2)) {
                     $data[] = ['role_id' => $roleId, 'role_id2' => $item];
                 }
             }
-            $mRoleExcludeRole->insertAll($data);
+            $this->mRoleExcludeRole->insertAll($data);
             Db::commit();
             return ['code' => 1, 'msg' => '角色互斥组织成功'];
         } catch (\Exception $e) {
@@ -205,8 +203,7 @@ final class Role extends Crud
     public function getPower($roleId)
     {
         try{
-            $mRoleHavePower = new RoleHavePower();
-            $powerList = $mRoleHavePower->where('role_id', 'eq', $roleId)->select()->toArray();
+            $powerList = $this->mRoleHavePower->where('role_id', 'eq', $roleId)->select()->toArray();
             return ['code' => 1, 'data' => $powerList];
         }catch (\Exception $e) {
             return ['code' => -1, 'msg' => $e->getMessage()];
@@ -214,14 +211,11 @@ final class Role extends Crud
     }
     public function delete($id)
     {
-        $mUserAssignRole = new UserAssignRole(); // 解除用户分配到的角色
-        $mRoleHavePower = new RoleHavePower(); // 删除角色所有的权限
-        $mRoleExcludeRole = new RoleExcludeRole(); // 删除相关的互斥关系
         Db::startTrans();
         $where = ['role_id' => $id];
-        $mUserAssignRole->where($where )->delete();
-        $mRoleHavePower->where($where)->delete();
-        $mRoleExcludeRole->where($where)->whereOr(['role_id2' => $id])->delete();
+        $this->mUserAssignRole->where($where )->delete(); // 解除用户分配到的角色
+        $this->mRoleHavePower->where($where)->delete(); // 删除角色所有的权限
+        $this->mRoleExcludeRole->where($where)->whereOr(['role_id2' => $id])->delete(); // 删除相关的互斥关系
         return parent::delete(intval($id));
     }
 }
