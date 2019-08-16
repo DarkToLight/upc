@@ -40,7 +40,7 @@ abstract class  Crud
             }
             $this->model->save($input);
             Db::commit();
-            $backData = ['code' => 1, 'msg' => '新增成功'];
+            $backData = ['code' => 1, 'msg' => '新增成功', 'id' => $this->model->id];
             return $backData;
         } catch (ValidateException $e) {
             Db::rollback();
